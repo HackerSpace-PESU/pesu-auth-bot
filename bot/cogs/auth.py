@@ -40,8 +40,11 @@ class AuthenticationCog(commands.Cog):
         Authenticates the user with their PESU Academy credentials
         """
         logging.info(f"Authenticating {interaction.user}")
-        await interaction.response.defer()
-        verification_role_id = self.db.get_verification_role_for_server(guild_id=interaction.guild_id)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            verification_role_id = self.db.get_verification_role_for_server(guild_id=interaction.guild_id)
+        except AttributeError:
+            verification_role_id = None
         if verification_role_id is not None:
             verification_role = interaction.guild.get_role(verification_role_id)
             if verification_role in interaction.user.roles:

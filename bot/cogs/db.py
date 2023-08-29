@@ -34,7 +34,11 @@ class DatabaseCog(commands.Cog):
         """
         Gets the verification role for a server
         """
-        return self.collection.find_one({"guild_id": guild_id}).get("verification_role_id", None)
+        try:
+            return self.collection.find_one({"guild_id": guild_id}).get("verification_role_id", None)
+        except AttributeError:
+            self.add_server(guild_id)
+            return None
 
     def add_verification_role(self, guild_id: int, role_id: int):
         """
