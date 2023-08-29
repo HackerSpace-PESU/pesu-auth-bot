@@ -135,3 +135,9 @@ class ModeratorCog(commands.Cog):
                 color=discord.Color.red(),
             )
         await interaction.followup.send(embed=embed)
+
+async def setup(client: commands.Bot):
+    """
+    Adds the cog to the bot
+    """
+    await client.add_cog(ModeratorCog(client, client.db))

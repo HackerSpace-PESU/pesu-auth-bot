@@ -32,7 +32,6 @@ class BaseCog(commands.Cog):
         Called when the bot is ready
         """
         logging.info(f"Logged in as {self.client.user.name}#{self.client.user.discriminator}")
-        await self.client.tree.sync()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -82,3 +81,10 @@ class BaseCog(commands.Cog):
         await self.client.wait_until_ready()
         logging.info("Changing bot status")
         await self.client.change_presence(activity=discord.Game(next(self.statuses)))
+
+
+async def setup(client: commands.Bot):
+    """
+    Adds the cog to the bot
+    """
+    await client.add_cog(BaseCog(client, client.db))

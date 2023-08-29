@@ -63,7 +63,8 @@ class AuthenticationCog(commands.Cog):
                     )
                     for field in authentication_result["profile"]:
                         modified_field = field.replace("_", " ")
-                        modified_field = " ".join([word.capitalize() for word in modified_field.split()])
+                        modify = lambda x: x.capitalize() if len(x) > 3 else x.upper()
+                        modified_field = " ".join([modify(word) for word in modified_field.split()])
                         embed.add_field(name=modified_field, value=authentication_result["profile"][field], inline=True)
                     await interaction.followup.send(embed=embed, ephemeral=True)
                 else:
@@ -81,3 +82,10 @@ class AuthenticationCog(commands.Cog):
                 color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed)
+
+
+async def setup(client: commands.Bot):
+    """
+    Adds the cog to the bot
+    """
+    await client.add_cog(AuthenticationCog(client, client.db))

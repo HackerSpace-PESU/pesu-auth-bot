@@ -8,9 +8,9 @@ class DatabaseCog(commands.Cog):
     This cog contains all database utilities
     """
 
-    def __init__(self, client: commands.Bot, config: dict):
+    def __init__(self, client: commands.Bot):
         self.client = client
-        self.mongo_client = MongoClient(config["db"])
+        self.mongo_client = MongoClient(client.config["db"])
         self.db = self.mongo_client["pesu_auth_bot_db"]
         self.collection = self.db["verification"]
 
@@ -47,3 +47,10 @@ class DatabaseCog(commands.Cog):
         Removes a verification role from a server
         """
         self.collection.update_one({"guild_id": guild_id}, {"$unset": {"verification_role_id": ""}})
+
+
+async def setup(client: commands.Bot):
+    """
+    Adds the cog to the bot
+    """
+    await client.add_cog(DatabaseCog(client))
