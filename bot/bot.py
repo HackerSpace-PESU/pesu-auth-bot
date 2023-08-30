@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import traceback
 
 import discord
 import yaml
+from discord.app_commands import AppCommandError
 from discord.ext import commands
 
 from cogs.db import DatabaseCog
@@ -30,13 +32,51 @@ async def setup():
     await client.start(config["bot"]["token"])
 
 
-if __name__ == "__main__":
-    config = yaml.safe_load(open("config.yml"))
-    logging.info(f"Loaded config:\n{config}")
-    bot_prefix = config["bot"].get("prefix", "pesauth.")
-    intents = discord.Intents.default()
-    intents.members = True
-    intents.message_content = True
-    client = commands.Bot(command_prefix=bot_prefix, help_command=None, intents=intents)
-    client.config = config
-    asyncio.run(setup())
+config = yaml.safe_load(open("config.yml"))
+logging.info(f"Loaded config:\n{config}")
+bot_prefix = config["bot"].get("prefix", "pesauth.")
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+client = commands.Bot(command_prefix=bot_prefix, help_command=None, intents=intents)
+client.config = config
+
+
+@client.tree.error
+async def app_command_error(interaction: discord.Interaction, error: AppCommandError):
+    """
+    Handles errors raised by app commands
+    """
+    logging.error(f"Slash command error: {error}\n{traceback.format_exc()}")
+    embed = discord.Embed(
+        title="Error",
+        description=str(error),
+        color=discord.Color.red(),
+    )
+    try:
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    except discord.errors.InteractionResponded:
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+@client.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    elif isinstance(error, commands.MissingPermissions):
+        embed = discord.Embed(
+            title="Error",
+            description="You do not have the required permissions to run this command",
+            color=discord.Color.red(),
+        )
+        await ctx.reply(embed=embed)
+    else:
+        logging.error(f"Command error: {error}\n{traceback.format_exc()}")
+        embed = discord.Embed(
+            title="Error",
+            description=str(error),
+            color=discord.Color.red(),
+        )
+        await ctx.reply(embed=embed)
+
+
+asyncio.run(setup())

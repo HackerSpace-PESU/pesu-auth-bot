@@ -51,13 +51,23 @@ class AuthenticationCog(commands.Cog):
                 embed = discord.Embed(
                     title="Verification Failed",
                     description=f"You are already verified on this server",
-                    color=discord.Color.red(),
+                    color=discord.Color.orange(),
                 )
                 await interaction.followup.send(embed=embed)
             else:
                 authentication_result = self.check_pesu_academy_credentials(username=username, password=password)
                 if authentication_result["status"]:
-                    await interaction.user.add_roles(verification_role)
+                    try:
+                        await interaction.user.add_roles(verification_role)
+                    except discord.Forbidden:
+                        embed = discord.Embed(
+                            title="Verification Failed",
+                            description=f"{self.client.user.mention} does not have permission to assign the {verification_role.mention} role. "
+                                        f"Please contact an admin to give bot the required permissions",
+                            color=discord.Color.red(),
+                        )
+                        await interaction.followup.send(embed=embed)
+                        return
                     embed = discord.Embed(
                         title="Verification Successful",
                         description=f"You have successfully verified your account and have been assigned the "

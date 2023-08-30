@@ -65,14 +65,6 @@ class BaseCog(commands.Cog):
         logging.info(f"Left server {guild.name}")
         self.db.remove_server(guild.id)
 
-    @commands.Cog.listener()
-    async def on_slash_command_error(self, ctx, error):
-        """
-        Called when a slash command fails
-        """
-        logging.error(f"Slash command error: {error}\n{traceback.format_exc()}")
-        await ctx.send(f"An error occurred: {error}")
-
     @tasks.loop(hours=5)
     async def change_status_loop(self):
         """
