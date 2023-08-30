@@ -1,7 +1,8 @@
 import logging
 import subprocess
 import sys
-from typing import Optional
+import yaml
+from typing import Optional, Union
 
 import discord
 from discord import app_commands
@@ -13,6 +14,8 @@ class DeveloperCog(commands.Cog):
     This cog contains all commands and functionalities available to the bot developers
     """
 
+    config = yaml.safe_load(open("config.yml"))
+
     def __init__(self, client: commands.Bot):
         self.client = client
         self.developer_user_ids = client.config["bot"]["developer_user_ids"]
@@ -23,17 +26,23 @@ class DeveloperCog(commands.Cog):
         ]
 
     @staticmethod
-    def check_developer_permissions():
+    def check_developer_permissions(type: str = "app"):
         """
         Checks if the user is a developer
         """
 
-        async def predicate(interaction: discord.Interaction):
+        async def predicate(interaction: Union[commands.Context, discord.Interaction]):
+            if isinstance(interaction, commands.Context):
+                return interaction.author.id in interaction.bot.cogs["DeveloperCog"].developer_user_ids
             return interaction.user.id in interaction.client.cogs["DeveloperCog"].developer_user_ids
 
-        return app_commands.check(predicate)
+        if type == "app":
+            return app_commands.check(predicate)
+        return commands.check(predicate)
+    
+    dev_commands = app_commands.Group(name="dev", description="Developer commands", guild_ids=config["bot"]["developer_guild_ids"], guild_only=True)
 
-    @app_commands.command(name="gitpull", description="Pull the latest changes from GitHub")
+    @dev_commands.command(name="gitpull", description="Pull the latest changes from GitHub")
     @check_developer_permissions()
     async def git_pull(self, interaction: discord.Interaction):
         """
@@ -70,7 +79,7 @@ class DeveloperCog(commands.Cog):
         sys.stdout.flush()
 
     @commands.command(name="sync", help="Sync commands with Discord")
-    @check_developer_permissions()
+    @check_developer_permissions("text")
     async def sync_command(self, ctx: commands.Context):
         """
         Syncs commands with Discord
@@ -84,8 +93,27 @@ class DeveloperCog(commands.Cog):
         )
         await ctx.reply(embed=embed)
 
+    @commands.command(name="sync_guild", help="Sync commands with Discord for a specific guild")
+    @check_developer_permissions("text")
+    async def sync_guild_command(self, ctx: commands.Context, guild_id: int = None):
+        """
+        Syncs commands with Discord for a specific guild
+        """
+        if guild_id is None:
+            guild = ctx.guild
+        else:
+            guild = await self.client.get_guild(guild_id)
+        logging.info(f"Synchronizing commands with Discord for guild {guild.id}")
+        await self.client.tree.sync(guild=guild)
+        embed = discord.Embed(
+            title="Commands synced with Discord",
+            description=f"The bot has finished syncing commands with Discord for guild {guild.id}",
+            color=discord.Color.green(),
+        )
+        await ctx.reply(embed=embed)
+
     @commands.command(name="reload", help="Reloads specified cog or all cogs")
-    @check_developer_permissions()
+    @check_developer_permissions("text")
     async def reload_cog(self, ctx: commands.Context, cog: str = None):
         """
         Reloads specified cog or all cogs
@@ -116,11 +144,11 @@ class DeveloperCog(commands.Cog):
         )
         await ctx.reply(embed=embed)
 
-    @app_commands.command(name="log", description="Get the logs of the bot")
+    @dev_commands.command(name="log", description="Get the logs of the bot")
     @app_commands.describe(lines="The number of lines to fetch from EOF")
     @check_developer_permissions()
     async def logs(self, interaction: discord.Interaction, lines: Optional[int] = None):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         try:
             lines = int(lines)
         except (TypeError, ValueError):
@@ -134,7 +162,7 @@ class DeveloperCog(commands.Cog):
             logs = f"```log\n{''.join(logs)}```"
             await interaction.followup.send(logs)
 
-    @app_commands.command(name="shutdown", description="Shutdown the bot")
+    @dev_commands.command(name="shutdown", description="Shutdown the bot")
     @check_developer_permissions()
     async def shutdown(self, interaction: discord.Interaction):
         """
@@ -150,7 +178,7 @@ class DeveloperCog(commands.Cog):
         await interaction.followup.send(embed=embed)
         await self.client.close()
 
-    @app_commands.command(name="restart", description="Restart the bot")
+    @dev_commands.command(name="restart", description="Restart the bot")
     @check_developer_permissions()
     async def restart(self, interaction: discord.Interaction):
         """

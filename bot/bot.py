@@ -4,6 +4,7 @@ import traceback
 
 import discord
 import yaml
+from discord import app_commands
 from discord.app_commands import AppCommandError
 from discord.ext import commands
 
@@ -33,11 +34,11 @@ async def setup():
 
 
 config = yaml.safe_load(open("config.yml"))
-logging.info(f"Loaded config:\n{config}")
 bot_prefix = config["bot"].get("prefix", "pesauth.")
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+
 client = commands.Bot(command_prefix=bot_prefix, help_command=None, intents=intents)
 client.config = config
 
@@ -47,12 +48,19 @@ async def app_command_error(interaction: discord.Interaction, error: AppCommandE
     """
     Handles errors raised by app commands
     """
-    logging.error(f"Slash command error: {error}\n{traceback.format_exc()}")
-    embed = discord.Embed(
-        title="Error",
-        description=str(error),
-        color=discord.Color.red(),
-    )
+    if isinstance(error, app_commands.errors.CheckFailure):
+        embed = discord.Embed(
+            title="Error",
+            description="You do not have the required permissions to run this command",
+            color=discord.Color.red(),
+        )
+    else:
+        logging.error(f"Slash command error: {error}\n{traceback.format_exc()}")
+        embed = discord.Embed(
+            title="Error",
+            description=str(error),
+            color=discord.Color.red(),
+        )
     try:
         await interaction.response.send_message(embed=embed, ephemeral=True)
     except discord.errors.InteractionResponded:
@@ -62,6 +70,13 @@ async def app_command_error(interaction: discord.Interaction, error: AppCommandE
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    elif isinstance(error, commands.CheckFailure):
+        embed = discord.Embed(
+            title="Error",
+            description="You do not have the required permissions to run this command",
+            color=discord.Color.red(),
+        )
+        await ctx.reply(embed=embed)
     elif isinstance(error, commands.MissingPermissions):
         embed = discord.Embed(
             title="Error",
