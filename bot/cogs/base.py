@@ -1,6 +1,5 @@
 import logging
 import traceback
-from itertools import cycle
 
 import discord
 from discord.ext import commands, tasks
@@ -16,13 +15,7 @@ class BaseCog(commands.Cog):
     def __init__(self, client: commands.Bot, db: DatabaseCog):
         self.client = client
         self.db = db
-        self.statuses = cycle([
-            "with the PRIDE of PESU",
-            "with lives",
-            "with your future",
-            "with PESsants",
-            "with PESts"
-        ])
+        self.count = 0
 
         self.change_status_loop.start()
 
@@ -65,14 +58,25 @@ class BaseCog(commands.Cog):
         logging.info(f"Left server {guild.name}")
         self.db.remove_server(guild.id)
 
-    @tasks.loop(hours=5)
+    @tasks.loop(hours=2)
     async def change_status_loop(self):
         """
-        Changes the bot status every 5 hours
+        Changes the bot status every 2 hours
         """
         await self.client.wait_until_ready()
         logging.info("Changing bot status")
-        await self.client.change_presence(activity=discord.Game(next(self.statuses)))
+        self.count += 1
+        if self.count == 3:
+            self.count = 0
+            member_count = 0
+            for guild in self.client.guilds:
+                guild = await self.client.fetch_guild(guild.id)
+                member_count += guild.approximate_member_count
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"over {(member_count // 100) * 100} members"))
+        elif self.count == 2:
+            await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.client.guilds)} servers"))
+        else:
+            await self.client.change_presence(activity=discord.Game(name=f"with the PRIDE of PESU"))
 
 
 async def setup(client: commands.Bot):
